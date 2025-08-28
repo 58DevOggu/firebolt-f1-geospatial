@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Geospatial Analytics Dashboard</title>
+    
+    <!-- External Dependencies -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/leaflet.polylineDecorator.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #dc143c, #8b0000);
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(220, 20, 60, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .season-selector {
+            background: #2c2c2c;
+            border: 2px solid #dc143c;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .season-selector:focus {
+            outline: none;
+            border-color: #ff4757;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: #2c2c2c;
+            border-right: 2px solid #dc143c;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #dc143c #2c2c2c;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #2c2c2c;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #dc143c;
+            border-radius: 4px;
+        }
+
+        .stats-panel {
+            padding: 20px;
+            margin: 10px;
+            background: linear-gradient(135deg, #3c3c3c, #4a4a4a);
+            border-radius: 10px;
+            border: 1px solid #dc143c;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .stats-panel h3 {
+            color: #dc143c;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #dc143c;
+            padding-bottom: 5px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(220, 20, 60, 0.2);
+        }
+
+        .stat-value {
+            color: #ff6b7a;
+            font-weight: bold;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(44, 44, 44, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #dc143c;
+            min-width: 200px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            color: #dc143c;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .control-btn {
+            background: linear-gradient(90deg, #dc143c, #8b0000);
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(90deg, #ff4757, #dc143c);
+            transform: translateY(-2px);
+        }
+
+        .control-btn.active {
+            background: linear-gradient(90deg, #ff4757, #ff6b7a);
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        }
+
+        .chart-container {
+            height: 200px;
+            margin: 15px 0;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: #2c2c2c;
+            color: #fff;
+            border-radius: 10px;
+            border: 2px solid #dc143c;
+        }
+
+        .leaflet-popup-content {
+            margin: 15px;
+        }
+
+        .leaflet-popup-tip {
+            background: #2c2c2c;
+            border: 2px solid #dc143c;
+        }
+
+        .circuit-popup h4 {
+            color: #dc143c;
+            margin-bottom: 10px;
+        }
+
+        .circuit-popup .detail {
+            margin: 5px 0;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(44, 44, 44, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #dc143c;
+            z-index: 1000;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+
+        .animation-controls {
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #4a4a4a;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc143c, #ff4757);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+            }
+            
+            .map-container {
+                height: 60vh;
+            }
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #4a4a4a;
+            border-top: 5px solid #dc143c;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <header class="header">
+        <h1><i class="fas fa-flag-checkered"></i> F1 Geospatial Analytics Dashboard</h1>
+        <select id="seasonSelector" class="season-selector">
+            <option value="all">All Seasons</option>
+            <option value="2024">2024 Season</option>
+            <option value="2023">2023 Season</option>
+            <option value="2022">2022 Season</option>
+        </select>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="stats-panel">
+                <h3><i class="fas fa-globe"></i> Circuits by Continent</h3>
+                <div id="continentStats"></div>
+                <div class="chart-container">
+                    <canvas id="continentChart"></canvas>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h3><i class="fas fa-tachometer-alt"></i> Fastest Circuits</h3>
+                <div id="fastestCircuits"></div>
+            </div>
+
+            <div class="stats-panel">
+                <h3><i class="fas fa-mountain"></i> Elevation Profiles</h3>
+                <div class="chart-container">
+                    <canvas id="elevationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h3><i class="fas fa-route"></i> Travel Statistics</h3>
+                <div id="travelStats"></div>
+            </div>
+
+            <div class="stats-panel">
+                <h3><i class="fas fa-play"></i> Race Sequence</h3>
+                <div class="animation-controls">
+                    <button id="playAnimation" class="control-btn">
+                        <i class="fas fa-play"></i> Play Season
+                    </button>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div id="currentRace">Ready to start</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>Display Options</label>
+                    <button id="toggleCircuits" class="control-btn active">
+                        <i class="fas fa-map-marker-alt"></i> Circuits
+                    </button>
+                    <button id="toggleCorridors" class="control-btn">
+                        <i class="fas fa-route"></i> Corridors
+                    </button>
+                </div>
+                <div class="control-group">
+                    <button id="fitView" class="control-btn">
+                        <i class="fas fa-expand"></i> Fit All
+                    </button>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #dc143c;"></div>
+                    <span>Current Race</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b7a;"></div>
+                    <span>Completed</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4a4a4a;"></div>
+                    <span>Upcoming</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffa726; height: 3px;"></div>
+                    <span>Racing Corridors</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // F1 Circuit Data (2024 Season)
+        const f1Circuits = [
+            {
+                name: "Bahrain International Circuit",
+                location: "Sakhir, Bahrain",
+                coordinates: [26.0325, 50.5106],
+                continent: "Asia",
+                lapRecord: "1:31.447",
+                elevation: 7,
+                country: "Bahrain",
+                round: 1,
+                season: 2024
+            },
+            {
+                name: "Jeddah Corniche Circuit",
+                location: "Jeddah, Saudi Arabia", 
+                coordinates: [21.6319, 39.1044],
+                continent: "Asia",
+                lapRecord: "1:30.734",
+                elevation: 15,
+                country: "Saudi Arabia",
+                round: 2,
+                season: 2024
+            },
+            {
+                name: "Albert Park Circuit",
+                location: "Melbourne, Australia",
+                coordinates: [-37.8497, 144.9681],
+                continent: "Oceania",
+                lapRecord: "1:20.260",
+                elevation: 2,
+                country: "Australia",
+                round: 3,
+                season: 2024
+            },
+            {
+                name: "Suzuka International Racing Course",
+                location: "Suzuka, Japan",
+                coordinates: [34.8431, 136.5414],
+                continent: "Asia",
+                lapRecord: "1:30.983",
+                elevation: 45,
+                country: "Japan",
+                round: 4,
+                season: 2024
+            },
+            {
+                name: "Shanghai International Circuit",
+                location: "Shanghai, China",
+                coordinates: [31.3389, 121.2197],
+                continent: "Asia",
+                lapRecord: "1:32.238",
+                elevation: 5,
+                country: "China",
+                round: 5,
+                season: 2024
+            },
+            {
+                name: "Miami International Autodrome",
+                location: "Miami, USA",
+                coordinates: [25.9581, -80.2389],
+                continent: "North America",
+                lapRecord: "1:31.361",
+                elevation: 3,
+                country: "United States",
+                round: 6,
+                season: 2024
+            },
+            {
+                name: "Autodromo Enzo e Dino Ferrari",
+                location: "Imola, Italy",
+                coordinates: [44.3439, 11.7167],
+                continent: "Europe",
+                lapRecord: "1:15.484",
+                elevation: 37,
+                country: "Italy",
+                round: 7,
+                season: 2024
+            },
+            {
+                name: "Circuit de Monaco",
+                location: "Monte Carlo, Monaco",
+                coordinates: [43.7347, 7.4206],
+                continent: "Europe",
+                lapRecord: "1:12.909",
+                elevation: 7,
+                country: "Monaco",
+                round: 8,
+                season: 2024
+            },
+            {
+                name: "Circuit Gilles-Villeneuve",
+                location: "Montreal, Canada",
+                coordinates: [45.5050, -73.5228],
+                continent: "North America",
+                lapRecord: "1:13.078",
+                elevation: 13,
+                country: "Canada",
+                round: 9,
+                season: 2024
+            },
+            {
+                name: "Circuit de Barcelona-Catalunya",
+                location: "Barcelona, Spain",
+                coordinates: [41.5697, 2.2611],
+                continent: "Europe",
+                lapRecord: "1:16.330",
+                elevation: 109,
+                country: "Spain",
+                round: 10,
+                season: 2024
+            },
+            {
+                name: "Red Bull Ring",
+                location: "Spielberg, Austria",
+                coordinates: [47.2197, 14.7647],
+                continent: "Europe",
+                lapRecord: "1:05.619",
+                elevation: 678,
+                country: "Austria",
+                round: 11,
+                season: 2024
+            },
+            {
+                name: "Silverstone Circuit",
+                location: "Silverstone, United Kingdom",
+                coordinates: [52.0786, -1.0169],
+                continent: "Europe",
+                lapRecord: "1:27.097",
+                elevation: 153,
+                country: "United Kingdom",
+                round: 12,
+                season: 2024
+            },
+            {
+                name: "Hungaroring",
+                location: "Budapest, Hungary",
+                coordinates: [47.5789, 19.2486],
+                continent: "Europe",
+                lapRecord: "1:16.627",
+                elevation: 161,
+                country: "Hungary",
+                round: 13,
+                season: 2024
+            },
+            {
+                name: "Circuit de Spa-Francorchamps",
+                location: "Spa, Belgium",
+                coordinates: [50.4372, 5.9714],
+                continent: "Europe",
+                lapRecord: "1:46.286",
+                elevation: 401,
+                country: "Belgium",
+                round: 14,
+                season: 2024
+            },
+            {
+                name: "Circuit Park Zandvoort",
+                location: "Zandvoort, Netherlands",
+                coordinates: [52.3888, 4.5478],
+                continent: "Europe",
+                lapRecord: "1:11.097",
+                elevation: 4,
+                country: "Netherlands",
+                round: 15,
+                season: 2024
+            },
+            {
+                name: "Autodromo Nazionale Monza",
+                location: "Monza, Italy",
+                coordinates: [45.6156, 9.2811],
+                continent: "Europe",
+                lapRecord: "1:21.046",
+                elevation: 162,
+                country: "Italy",
+                round: 16,
+                season: 2024
+            },
+            {
+                name: "Baku City Circuit",
+                location: "Baku, Azerbaijan",
+                coordinates: [40.3725, 49.8533],
+                continent: "Asia",
+                lapRecord: "1:43.009",
+                elevation: -1,
+                country: "Azerbaijan",
+                round: 17,
+                season: 2024
+            },
+            {
+                name: "Marina Bay Street Circuit",
+                location: "Singapore",
+                coordinates: [1.2914, 103.8642],
+                continent: "Asia",
+                lapRecord: "1:36.015",
+                elevation: 18,
+                country: "Singapore",
+                round: 18,
+                season: 2024
+            },
+            {
+                name: "Circuit of the Americas",
+                location: "Austin, USA",
+                coordinates: [30.1328, -97.6411],
+                continent: "North America",
+                lapRecord: "1:36.169",
+                elevation: 161,
+                country: "United States",
+                round: 19,
+                season: 2024
+            },
+            {
+                name: "Autódromo Hermanos Rodríguez",
+                location: "Mexico City, Mexico",
+                coordinates: [19.4042, -99.0907],
+                continent: "North America",
+                lapRecord: "1:17.774",
+                elevation: 2227,
+                country: "Mexico",
+                round: 20,
+                season: 2024
+            },
+            {
+                name: "Autódromo José Carlos Pace",
+                location: "São Paulo, Brazil",
+                coordinates: [-23.7036, -46.6997],
+                continent: "South America",
+                lapRecord: "1:10.540",
+                elevation: 760,
+                country: "Brazil",
+                round: 21,
+                season: 2024
+            },
+            {
+                name: "Las Vegas Street Circuit",
+                location: "Las Vegas, USA",
+                coordinates: [36.1147, -115.1728],
+                continent: "North America",
+                lapRecord: "1:35.490",
+                elevation: 610,
+                country: "United States",
+                round: 22,
+                season: 2024
+            },
+            {
+                name: "Losail International Circuit",
+                location: "Lusail, Qatar",
+                coordinates: [25.4900, 51.4542],
+                continent: "Asia",
+                lapRecord: "1:24.319",
+                elevation: 30,
+                country: "Qatar",
+                round: 23,
+                season: 2024
+            },
+            {
+                name: "Yas Marina Circuit",
+                location: "Abu Dhabi, UAE",
+                coordinates: [24.4672, 54.6031],
+                continent: "Asia",
+                lapRecord: "1:26.103",
+                elevation: 3,
+                country: "UAE",
+                round: 24,
+                season: 2024
+            }
+        ];
+
+        // Dashboard State
+        let map;
+        let circuitMarkers = [];
+        let corridorPolylines = [];
+        let continentChart;
+        let elevationChart;
+        let currentSeason = 'all';
+        let showCircuits = true;
+        let showCorridors = false;
+        let animationInterval;
+        let currentAnimationRound = 0;
+        let isAnimating = false;
+
+        // Initialize Dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            initializeCharts();
+            updateStatistics();
+            setupEventListeners();
+            hideLoading();
+        });
+
+        function initializeMap() {
+            map = L.map('map').setView([20, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            displayCircuits();
+            fitMapToCircuits();
+        }
+
+        function displayCircuits() {
+            clearMapElements();
+            
+            const filteredCircuits = getFilteredCircuits();
+            
+            if (showCircuits) {
+                filteredCircuits.forEach(circuit => {
+                    const marker = createCircuitMarker(circuit);
+                    circuitMarkers.push(marker);
+                    marker.addTo(map);
+                });
+            }
+
+            if (showCorridors) {
+                displayRacingCorridors(filteredCircuits);
+            }
+        }
+
+        function createCircuitMarker(circuit) {
+            const markerColor = getMarkerColor(circuit);
+            
+            const marker = L.circleMarker(circuit.coordinates, {
+                radius: 8,
+                fillColor: markerColor,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            });
+
+            const popupContent = `
+                <div class="circuit-popup">
+                    <h4>${circuit.name}</h4>
+                    <div class="detail"><strong>Location:</strong> ${circuit.location}</div>
+                    <div class="detail"><strong>Continent:</strong> ${circuit.continent}</div>
+                    <div class="detail"><strong>Lap Record:</strong> ${circuit.lapRecord}</div>
+                    <div class="detail"><strong>Elevation:</strong> ${circuit.elevation}m</div>
+                    <div class="detail"><strong>Round:</strong> ${circuit.round}</div>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+            return marker;
+        }
+
+        function getMarkerColor(circuit) {
+            if (isAnimating) {
+                if (circuit.round < currentAnimationRound) return '#ff6b7a'; // Completed
+                if (circuit.round === currentAnimationRound) return '#dc143c'; // Current
+                return '#4a4a4a'; // Upcoming
+            }
+            return '#dc143c'; // Default
+        }
+
+        function displayRacingCorridors(circuits) {
+            const sortedCircuits = circuits.sort((a, b) => a.round - b.round);
+            
+            for (let i = 0; i < sortedCircuits.length - 1; i++) {
+                const start = sortedCircuits[i];
+                const end = sortedCircuits[i + 1];
+                
+                const polyline = L.polyline([start.coordinates, end.coordinates], {
+                    color: '#ffa726',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '10, 5'
+                });
+                
+                corridorPolylines.push(polyline);
+                polyline.addTo(map);
+
+                // Add direction arrows
+                const decorator = L.polylineDecorator(polyline, {
+                    patterns: [{
+                        offset: '50%',
+                        repeat: 0,
+                        symbol: L.Symbol.arrowHead({
+                            pixelSize: 15,
+                            polygon: false,
+                            pathOptions: {
+                                stroke: true,
+                                weight: 2,
+                                color: '#ffa726'
+                            }
+                        })
+                    }]
+                }).addTo(map);
+                
+                corridorPolylines.push(decorator);
+            }
+        }
+
+        function clearMapElements() {
+            circuitMarkers.forEach(marker => map.removeLayer(marker));
+            corridorPolylines.forEach(polyline => map.removeLayer(polyline));
+            circuitMarkers = [];
+            corridorPolylines = [];
+        }
+
+        function getFilteredCircuits() {
+            if (currentSeason === 'all') return f1Circuits;
+            return f1Circuits.filter(circuit => circuit.season.toString() === currentSeason);
+        }
+
+        function initializeCharts() {
+            initializeContinentChart();
+            initializeElevationChart();
+        }
+
+        function initializeContinentChart() {
+            const ctx = document.getElementById('continentChart').getContext('2d');
+            const continentData = getContinentData();
+            
+            continentChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(continentData),
+                    datasets: [{
+                        data: Object.values(continentData),
+                        backgroundColor: ['#dc143c', '#ff4757', '#ffa726', '#ff6b7a', '#ff8a95'],
+                        borderColor: '#2c2c2c',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#fff',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeElevationChart() {
+            const ctx = document.getElementById('elevationChart').getContext('2d');
+            const circuits = getFilteredCircuits().sort((a, b) => a.round - b.round);
+            
+            elevationChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: circuits.map(c => c.name.split(' ')[0]),
+                    datasets: [{
+                        label: 'Elevation (m)',
+                        data: circuits.map(c => c.elevation),
+                        borderColor: '#dc143c',
+                        backgroundColor: 'rgba(220, 20, 60, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff', font: { size: 10 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#fff', font: { size: 9 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#fff', font: { size: 9 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateStatistics() {
+            updateContinentStats();
+            updateFastestCircuits();
+            updateTravelStats();
+            updateCharts();
+        }
+
+        function updateContinentStats() {
+            const continentData = getContinentData();
+            const container = document.getElementById('continentStats');
+            
+            container.innerHTML = '';
+            Object.entries(continentData).forEach(([continent, count]) => {
+                const item = document.createElement('div');
+                item.className = 'stat-item';
+                item.innerHTML = `
+                    <span>${continent}</span>
+                    <span class="stat-value">${count}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateFastestCircuits() {
+            const circuits = getFilteredCircuits()
+                .sort((a, b) => timeToSeconds(a.lapRecord) - timeToSeconds(b.lapRecord))
+                .slice(0, 5);
+
+            const container = document.getElementById('fastestCircuits');
+            container.innerHTML = '';
+            
+            circuits.forEach((circuit, index) => {
+                const item = document.createElement('div');
+                item.className = 'stat-item';
+                item.innerHTML = `
+                    <span>${index + 1}. ${circuit.name.split(' ')[0]}</span>
+                    <span class="stat-value">${circuit.lapRecord}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateTravelStats() {
+            const circuits = getFilteredCircuits().sort((a, b) => a.round - b.round);
+            let totalDistance = 0;
+            
+            for (let i = 0; i < circuits.length - 1; i++) {
+                const dist = calculateDistance(
+                    circuits[i].coordinates[0], circuits[i].coordinates[1],
+                    circuits[i + 1].coordinates[0], circuits[i + 1].coordinates[1]
+                );
+                totalDistance += dist;
+            }
+
+            const container = document.getElementById('travelStats');
+            container.innerHTML = `
+                <div class="stat-item">
+                    <span>Total Distance</span>
+                    <span class="stat-value">${Math.round(totalDistance).toLocaleString()} km</span>
+                </div>
+                <div class="stat-item">
+                    <span>Average per Race</span>
+                    <span class="stat-value">${Math.round(totalDistance / (circuits.length - 1)).toLocaleString()} km</span>
+                </div>
+                <div class="stat-item">
+                    <span>Continents Visited</span>
+                    <span class="stat-value">${new Set(circuits.map(c => c.continent)).size}</span>
+                </div>
+            `;
+        }
+
+        function getContinentData() {
+            const circuits = getFilteredCircuits();
+            const continentCount = {};
+            
+            circuits.forEach(circuit => {
+                continentCount[circuit.continent] = (continentCount[circuit.continent] || 0) + 1;
+            });
+            
+            return continentCount;
+        }
+
+        function updateCharts() {
+            // Update continent chart
+            const continentData = getContinentData();
+            continentChart.data.labels = Object.keys(continentData);
+            continentChart.data.datasets[0].data = Object.values(continentData);
+            continentChart.update();
+
+            // Update elevation chart
+            const circuits = getFilteredCircuits().sort((a, b) => a.round - b.round);
+            elevationChart.data.labels = circuits.map(c => c.name.split(' ')[0]);
+            elevationChart.data.datasets[0].data = circuits.map(c => c.elevation);
+            elevationChart.update();
+        }
+
+        function setupEventListeners() {
+            // Season selector
+            document.getElementById('seasonSelector').addEventListener('change', function(e) {
+                currentSeason = e.target.value;
+                displayCircuits();
+                updateStatistics();
+                fitMapToCircuits();
+            });
+
+            // Control buttons
+            document.getElementById('toggleCircuits').addEventListener('click', function() {
+                showCircuits = !showCircuits;
+                this.classList.toggle('active');
+                displayCircuits();
+            });
+
+            document.getElementById('toggleCorridors').addEventListener('click', function() {
+                showCorridors = !showCorridors;
+                this.classList.toggle('active');
+                displayCircuits();
+            });
+
+            document.getElementById('fitView').addEventListener('click', fitMapToCircuits);
+
+            // Animation controls
+            document.getElementById('playAnimation').addEventListener('click', toggleAnimation);
+        }
+
+        function toggleAnimation() {
+            const button = document.getElementById('playAnimation');
+            
+            if (isAnimating) {
+                stopAnimation();
+                button.innerHTML = '<i class="fas fa-play"></i> Play Season';
+            } else {
+                startAnimation();
+                button.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            }
+        }
+
+        function startAnimation() {
+            isAnimating = true;
+            currentAnimationRound = 1;
+            const circuits = getFilteredCircuits().sort((a, b) => a.round - b.round);
+            
+            animationInterval = setInterval(() => {
+                if (currentAnimationRound > circuits.length) {
+                    stopAnimation();
+                    return;
+                }
+
+                displayCircuits();
+                updateAnimationProgress(currentAnimationRound, circuits.length);
+                
+                const currentCircuit = circuits.find(c => c.round === currentAnimationRound);
+                if (currentCircuit) {
+                    document.getElementById('currentRace').textContent = 
+                        `Round ${currentAnimationRound}: ${currentCircuit.name}`;
+                    
+                    // Pan to current circuit
+                    map.setView(currentCircuit.coordinates, 6);
+                }
+
+                currentAnimationRound++;
+            }, 1500);
+        }
+
+        function stopAnimation() {
+            isAnimating = false;
+            clearInterval(animationInterval);
+            currentAnimationRound = 0;
+            displayCircuits();
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('currentRace').textContent = 'Ready to start';
+            document.getElementById('playAnimation').innerHTML = '<i class="fas fa-play"></i> Play Season';
+            fitMapToCircuits();
+        }
+
+        function updateAnimationProgress(current, total) {
+            const progress = (current / total) * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+        }
+
+        function fitMapToCircuits() {
+            const circuits = getFilteredCircuits();
+            if (circuits.length === 0) return;
+
+            const group = new L.featureGroup(
+                circuits.map(circuit => L.marker(circuit.coordinates))
+            );
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        // Utility functions
+        function timeToSeconds(timeString) {
+            const parts = timeString.split(':');
+            const minutes = parseInt(parts[0]);
+            const seconds = parseFloat(parts[1]);
+            return minutes * 60 + seconds;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function hideLoading() {
+            setTimeout(() => {
+                const loading = document.getElementById('loading');
+                loading.style.opacity = '0';
+                setTimeout(() => loading.remove(), 500);
+                
+                document.querySelector('.dashboard-container').classList.add('fade-in');
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
