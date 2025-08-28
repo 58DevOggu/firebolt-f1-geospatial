@@ -121,7 +121,7 @@ firebolt-f1-geospatial/
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/your-org/firebolt-f1-geospatial.git
+git clone https://github.com/58DevOggu/firebolt-f1-geospatial.git
 cd firebolt-f1-geospatial
 
 # Install Python dependencies
