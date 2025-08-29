@@ -13,7 +13,7 @@ USE f1_geospatial_analytics;
 -- ===========================
 
 -- Create external table for circuits with geographical data
-CREATE EXTERNAL TABLE IF NOT EXISTS circuits_ext (
+CREATE EXTERNAL TABLE circuits_ext (
   circuitId BIGINT NULL,
   circuitRef TEXT NULL,
   name TEXT NULL,
@@ -24,9 +24,11 @@ CREATE EXTERNAL TABLE IF NOT EXISTS circuits_ext (
   alt DOUBLE PRECISION NULL,
   url TEXT NULL
 ) 
-URL = 's3://your-bucket/f1-data/circuits.csv'
-OBJECT_PATTERN = '*.csv' 
+CREDENTIALS = ( AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'circuits.csv' 
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
+
 
 -- Create external table for races
 CREATE EXTERNAL TABLE IF NOT EXISTS races_ext (
@@ -35,39 +37,42 @@ CREATE EXTERNAL TABLE IF NOT EXISTS races_ext (
   round BIGINT NULL,
   circuitId BIGINT NULL,
   name TEXT NULL,
-  date DATE NULL,
-  time TEXT NULL,
-  url TEXT NULL,
-  fp1_date DATE NULL,
+  race_date TEXT NULL,
+  race_time TEXT NULL,
+  race_url TEXT NULL,
+  fp1_date TEXT NULL,
   fp1_time TEXT NULL,
-  fp2_date DATE NULL,
+  fp2_date TEXT NULL,
   fp2_time TEXT NULL,
-  fp3_date DATE NULL,
+  fp3_date TEXT NULL,
   fp3_time TEXT NULL,
-  quali_date DATE NULL,
+  quali_date TEXT NULL,
   quali_time TEXT NULL,
-  sprint_date DATE NULL,
+  sprint_date TEXT NULL,
   sprint_time TEXT NULL
 )
-URL = 's3://your-bucket/f1-data/races.csv'
-OBJECT_PATTERN = '*.csv'
+CREDENTIALS = (AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'races.csv'
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
 
 -- Create external table for drivers
 CREATE EXTERNAL TABLE IF NOT EXISTS drivers_ext (
-  driverId BIGINT NULL,
+  driverId TEXT NULL,
   driverRef TEXT NULL,
-  number BIGINT NULL,
+  number TEXT NULL,
   code TEXT NULL,
   forename TEXT NULL,
   surname TEXT NULL,
-  dob DATE NULL,
+  driver_dob TEXT NULL,
   nationality TEXT NULL,
-  url TEXT NULL
+  profile_url TEXT NULL
 )
-URL = 's3://your-bucket/f1-data/drivers.csv'
-OBJECT_PATTERN = '*.csv'
+CREDENTIALS = (AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'drivers.csv'
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
+
 
 -- Create external table for constructors
 CREATE EXTERNAL TABLE IF NOT EXISTS constructors_ext (
@@ -77,34 +82,37 @@ CREATE EXTERNAL TABLE IF NOT EXISTS constructors_ext (
   nationality TEXT NULL,
   url TEXT NULL
 )
-URL = 's3://your-bucket/f1-data/constructors.csv'
-OBJECT_PATTERN = '*.csv'
+CREDENTIALS = (AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'constructors.csv'
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
 
 -- Create external table for race results
 CREATE EXTERNAL TABLE IF NOT EXISTS results_ext (
-  resultId BIGINT NULL,
-  raceId BIGINT NULL,
-  driverId BIGINT NULL,
-  constructorId BIGINT NULL,
-  number BIGINT NULL,
-  grid BIGINT NULL,
-  position BIGINT NULL,
+  resultId TEXT NULL,
+  raceId TEXT NULL,
+  driverId TEXT NULL,
+  constructorId TEXT NULL,
+  number TEXT NULL,
+  grid TEXT NULL,
+  position TEXT NULL,
   positionText TEXT NULL,
-  positionOrder BIGINT NULL,
-  points DOUBLE PRECISION NULL,
-  laps BIGINT NULL,
-  time TEXT NULL,
-  milliseconds BIGINT NULL,
-  fastestLap BIGINT NULL,
-  rank BIGINT NULL,
+  positionOrder TEXT NULL,
+  points TEXT NULL,
+  laps TEXT NULL,
+  time_taken TEXT NULL,
+  milliseconds TEXT NULL,
+  fastestLap TEXT NULL,
+  rank TEXT NULL,
   fastestLapTime TEXT NULL,
-  fastestLapSpeed DOUBLE PRECISION NULL,
-  statusId BIGINT NULL
+  fastestLapSpeed TEXT NULL,
+  statusId TEXT NULL
 )
-URL = 's3://your-bucket/f1-data/results.csv'
-OBJECT_PATTERN = '*.csv'
+CREDENTIALS = (AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'results.csv'
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
+
 
 -- Create external table for lap times
 CREATE EXTERNAL TABLE IF NOT EXISTS lap_times_ext (
@@ -112,11 +120,12 @@ CREATE EXTERNAL TABLE IF NOT EXISTS lap_times_ext (
   driverId BIGINT NULL,
   lap BIGINT NULL,
   position BIGINT NULL,
-  time TEXT NULL,
+  lap_time TEXT NULL,
   milliseconds BIGINT NULL
 )
-URL = 's3://your-bucket/f1-data/lap_times.csv'
-OBJECT_PATTERN = '*.csv'
+CREDENTIALS = (AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'lap_times.csv'
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
 
 -- Create external table for qualifying results
@@ -131,8 +140,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS qualifying_ext (
   q2 TEXT NULL,
   q3 TEXT NULL
 )
-URL = 's3://your-bucket/f1-data/qualifying.csv'
-OBJECT_PATTERN = '*.csv'
+CREDENTIALS = (AWS_ROLE_ARN = 'arn:aws:iam::')
+URL = 's3://some-bucket/f1-data/'
+OBJECT_PATTERN = 'qualifying.csv'
 TYPE = (CSV SKIP_HEADER_ROWS = TRUE);
 
 -- ===========================
@@ -202,14 +212,26 @@ SELECT * FROM qualifying_ext;
 -- GEOSPATIAL REGIONS DEFINITION
 -- ===========================
 
--- Define major racing regions as polygons
-SET query_parameters={"name":"europe","value":"POLYGON((-10 35, 40 35, 40 71, -10 71, -10 35))"};
-SET query_parameters={"name":"asia","value":"POLYGON((50 -10, 150 -10, 150 55, 50 55, 50 -10))"};
-SET query_parameters={"name":"americas","value":"POLYGON((-170 -60, -30 -60, -30 75, -170 75, -170 -60))"};
+SET query_parameters =[{"name":"europe","value":"POLYGON((-10 35, 40 35, 40 71, -10 71, -10 35))"},{"name":"asia","value":"POLYGON((50 -10, 150 -10, 150 55, 50 55, 50 -10))"},{"name":"americas","value":"POLYGON((-170 -60, -30 -60, -30 75, -170 75, -170 -60))"}];
 
 -- ===========================
 -- ANALYTICAL QUERIES
 -- ===========================
+
+-- 1. Circuit Distribution by Continent
+SELECT 
+  CASE
+    WHEN ST_COVERS(ST_GeogFromText(param('europe')), circuit_location) THEN 'Europe'
+    WHEN ST_COVERS(ST_GeogFromText(param('asia')), circuit_location) THEN 'Asia'
+    WHEN ST_COVERS(ST_GeogFromText(param('americas')), circuit_location) THEN 'Americas'
+    ELSE 'Other'
+  END AS continent,
+  COUNT(*) as circuit_count,
+  ARRAY_AGG(name) as circuit_names
+FROM circuits
+WHERE circuit_location IS NOT NULL
+GROUP BY continent
+ORDER BY circuit_count DESC;
 
 -- 1. Circuit Distribution by Continent
 SELECT 
@@ -265,21 +287,35 @@ JOIN races r ON c.circuitId = r.circuitId
 WHERE c.circuit_location IS NOT NULL
 GROUP BY cell_id, c.country, c.location
 ORDER BY total_races DESC;
+SELECT 
+  ST_S2CellIDFromPoint(c.circuit_location, 8) as cell_id,
+  c.country,
+  c.location,
+  COUNT(DISTINCT r.raceId) as total_races,
+  COUNT(DISTINCT r.year) as years_active,
+  MIN(r.year) as first_race,
+  MAX(r.year) as last_race,
+  ARRAY_AGG(DISTINCT c.name) as circuit_names
+FROM circuits c
+JOIN races r ON c.circuitId = r.circuitId
+WHERE c.circuit_location IS NOT NULL
+GROUP BY cell_id, c.country, c.location
+ORDER BY total_races DESC;
 
 -- 4. Constructor Success by Geographic Regions
 SELECT 
   c.name as constructor,
   c.nationality,
   COUNT(DISTINCT r.raceId) as races_participated,
-  SUM(res.points) as total_points,
-  COUNT(CASE WHEN res.position = 1 THEN 1 END) as wins,
-  COUNT(CASE WHEN res.position <= 3 THEN 1 END) as podiums,
-  ROUND(AVG(res.points), 2) as avg_points_per_race
+  SUM(TRY_CAST(res.points AS INT)) as total_points,
+  COUNT(CASE WHEN TRY_CAST(res.position AS INT) = 1 THEN 1 END) as wins,
+  COUNT(CASE WHEN TRY_CAST(res.position AS INT) <= 3 AND TRY_CAST(res.position AS INT) >= 1 THEN 1 END) as podiums,
+  ROUND(AVG(TRY_CAST(res.points AS INT)), 2) as avg_points_per_race
 FROM constructors c
-JOIN results res ON c.constructorId = res.constructorId
-JOIN races r ON res.raceId = r.raceId
-JOIN circuits cir ON r.circuitId = cir.circuitId
-WHERE ST_COVERS(ST_GeogFromText(param('europe')), cir.circuit_location)
+JOIN results res ON TRY_CAST(c.constructorId AS INT) = TRY_CAST(res.constructorId AS INT)
+JOIN races r ON TRY_CAST(res.raceId AS INT)= TRY_CAST(r.raceId AS INT)
+JOIN circuits cir ON TRY_CAST(r.circuitId AS INT) = TRY_CAST(cir.circuitId AS INT)
+WHERE ST_COVERS(ST_GeogFromText('POLYGON((-10 35, 40 35, 40 71, -10 71, -10 35))'), cir.circuit_location)
 GROUP BY c.name, c.nationality
 ORDER BY total_points DESC
 LIMIT 20;
@@ -308,17 +344,17 @@ SELECT
   COUNT(DISTINCT r.raceId) as num_races,
   SUM(
     CASE 
-      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Monaco%' THEN res.laps * 3.337  -- Monaco lap length
-      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Spa%' THEN res.laps * 7.004     -- Spa lap length
-      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Silverstone%' THEN res.laps * 5.891
-      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Monza%' THEN res.laps * 5.793
-      ELSE res.laps * 5.0  -- Average F1 circuit length
+      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Monaco%' THEN TRY_CAST(res.laps AS INT) * 3.337  -- Monaco lap length
+      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Spa%' THEN TRY_CAST(res.laps AS INT) * 7.004     -- Spa lap length
+      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Silverstone%' THEN TRY_CAST(res.laps AS INT) * 5.891
+      WHEN res.laps IS NOT NULL AND cir.name LIKE '%Monza%' THEN TRY_CAST(res.laps AS INT) * 5.793
+      ELSE TRY_CAST(res.laps AS INT) * 5.0  -- Average F1 circuit length
     END
   ) as total_distance_km
 FROM races r
-JOIN results res ON r.raceId = res.raceId
-JOIN circuits cir ON r.circuitId = cir.circuitId
-WHERE res.position = 1  -- Only count winner's distance
+JOIN results res ON TRY_CAST(r.raceId AS INT) = TRY_CAST(res.raceId AS INT)
+JOIN circuits cir ON TRY_CAST(r.circuitId AS INT)= TRY_CAST(cir.circuitId AS INT)
+WHERE TRY_CAST(res.position AS INT)= 1  -- Only count winner's distance
 GROUP BY r.year
 ORDER BY r.year DESC
 LIMIT 20;
@@ -339,7 +375,7 @@ SELECT
   c.name,
   c.location,
   c.country,
-  ST_AsText(c.circuit_location) as coordinates,
+  MAX(ST_AsText(c.circuit_location)) as coordinates,
   COUNT(r.raceId) as total_races,
   CASE
     WHEN c.name LIKE '%Marina Bay%' THEN 'Night Race'
@@ -352,7 +388,7 @@ SELECT
 FROM circuits c
 JOIN races r ON c.circuitId = r.circuitId
 WHERE c.circuit_location IS NOT NULL
-GROUP BY c.name, c.location, c.country, c.circuit_location
+GROUP BY c.name, c.location, c.country
 ORDER BY total_races DESC;
 
 -- 9. Create Racing Corridors (Paths Between Sequential Races)
@@ -392,21 +428,24 @@ SELECT
   c.name as circuit_name,
   c.location,
   c.country,
-  AVG(res.fastestLapSpeed) as avg_fastest_lap_speed,
-  MAX(res.fastestLapSpeed) as max_speed_recorded,
+  ROUND(AVG(TRY_CAST(res.fastestLapSpeed AS FLOAT)), 2) as avg_fastest_lap_speed,
+  ROUND(MAX(TRY_CAST(res.fastestLapSpeed AS FLOAT)), 2) as max_speed_recorded,
   COUNT(DISTINCT r.raceId) as races_analyzed,
-  ST_AsText(c.circuit_location) as coordinates
+  COUNT(CASE WHEN TRY_CAST(res.fastestLapSpeed AS FLOAT) IS NOT NULL THEN 1 END) as valid_speed_records
 FROM circuits c
 JOIN races r ON c.circuitId = r.circuitId
-JOIN results res ON r.raceId = res.raceId
-WHERE res.fastestLapSpeed IS NOT NULL
-  AND res.fastestLapSpeed > 0
-  AND c.circuit_location IS NOT NULL
-GROUP BY c.name, c.location, c.country, c.circuit_location
+JOIN results res ON r.raceId = TRY_CAST(res.raceId AS INT)  
+WHERE TRY_CAST(res.fastestLapSpeed AS FLOAT) IS NOT NULL
+  AND TRY_CAST(res.fastestLapSpeed AS FLOAT) > 0
+  AND TRY_CAST(res.fastestLapSpeed AS FLOAT) < 400  
+  AND res.fastestLapSpeed != ''  -- Exclude empty strings
+  AND res.fastestLapSpeed != '\\N'  -- Exclude NULL representations
+GROUP BY c.name, c.location, c.country
 ORDER BY avg_fastest_lap_speed DESC
 LIMIT 15;
 
 -- 11. Driver Performance by Geographic Region
+SET query_parameters =[{"name":"europe","value":"POLYGON((-10 35, 40 35, 40 71, -10 71, -10 35))"},{"name":"asia","value":"POLYGON((50 -10, 150 -10, 150 55, 50 55, 50 -10))"},{"name":"americas","value":"POLYGON((-170 -60, -30 -60, -30 75, -170 75, -170 -60))"}];
 WITH driver_region_stats AS (
   SELECT 
     d.forename || ' ' || d.surname as driver_name,
@@ -417,12 +456,12 @@ WITH driver_region_stats AS (
       WHEN ST_COVERS(ST_GeogFromText(param('americas')), c.circuit_location) THEN 'Americas'
       ELSE 'Other'
     END AS region,
-    COUNT(res.raceId) as races,
-    SUM(res.points) as points,
-    COUNT(CASE WHEN res.position = 1 THEN 1 END) as wins
+    COUNT(TRY_CAST(res.raceId AS INT)) as races,
+    SUM(TRY_CAST(res.points AS INT)) as points,
+    COUNT(CASE WHEN TRY_CAST(res.position AS INT) = 1 THEN 1 END) as wins
   FROM drivers d
-  JOIN results res ON d.driverId = res.driverId
-  JOIN races r ON res.raceId = r.raceId
+  JOIN results res ON TRY_CAST(d.driverId AS INT) = TRY_CAST(res.driverId AS INT)
+  JOIN races r ON TRY_CAST(res.raceId AS INT) = r.raceId
   JOIN circuits c ON r.circuitId = c.circuitId
   WHERE c.circuit_location IS NOT NULL
     AND r.year >= 2010
@@ -457,11 +496,11 @@ SELECT
     WHEN c.name LIKE '%Bahrain%' THEN 'Very Low Rain Probability'
     ELSE 'Variable'
   END as rain_likelihood,
-  ST_AsText(c.circuit_location) as coordinates
+  MAX(ST_AsText(c.circuit_location)) as coordinates
 FROM circuits c
 JOIN races r ON c.circuitId = r.circuitId
 WHERE c.circuit_location IS NOT NULL
-GROUP BY c.name, c.location, c.country, c.circuit_location
+GROUP BY c.name, c.location, c.country
 ORDER BY total_races DESC;
 
 -- ===========================
