@@ -124,8 +124,17 @@ firebolt-f1-geospatial/
 git clone https://github.com/58DevOggu/firebolt-f1-geospatial.git
 cd firebolt-f1-geospatial
 
+#Simple Setup  
+
+a. Upload the csv files from data folder to S3 bucket
+b. Create the IAM Role for firebolt to access S3
+c. Launch Firebolt and run the SQL Script f1_geospatial.sql
+
+#Advanced Setup
+
 # Install Python dependencies
 pip install -r geospatial/geospatial-application-demo/requirements.txt
+
 ```
 
 ### 2. Download F1 Dataset
